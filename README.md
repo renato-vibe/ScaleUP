@@ -29,6 +29,9 @@ curl -s http://127.0.0.1:8080/metrics
 Version marker:
 - `/health` includes `version` and `build_id`, which auto-change when `README.md` changes.
 
+Local UI (visual test console):
+- Open `http://127.0.0.1:8080/` to upload images/videos or capture a camera snapshot.
+
 ## Camera mode (no emission, output=test)
 ```sh
 scale-vision run --config samples/sample_config_camera.json
@@ -104,5 +107,6 @@ See `docs/wiring_and_pos_integration.txt` for the 3-link diagram and preflight c
 
 ## Troubleshooting
 - If `/health` returns 503, inspect `/var/log/scale-vision/events.jsonl`.
+- If `/health` returns 404, verify the service is running and no other app is using port 8080.
 - Use the kill switch file to block output: `sudo touch /etc/scale-vision/disable_output`.
 - If using serial output, ensure the user is in the `dialout` group.

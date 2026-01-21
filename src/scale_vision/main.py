@@ -96,6 +96,7 @@ def run(config_path: str) -> None:
     health = HealthTracker()
     metrics = Metrics()
     state = RuntimeState(health=health, metrics=metrics)
+    state.config = config
 
     backend, buffer, freeze_cfg = _build_ingestion(config)
     ingestion_runner = IngestionRunner(
@@ -122,9 +123,11 @@ def run(config_path: str) -> None:
             inference = StubInferenceBackend(config.inference.stub_classes, config.inference.top_k)
             inference.load()
             health.clear_reason("INFERENCE_LOAD_FAILED")
+    state.inference = inference
 
     decision_engine = DecisionEngine(config.decision)
     mapper = Mapper(config.mapping)
+    state.mapper = mapper
     output_backend = _build_output(config, logger)
     output_backend.start()
 
@@ -153,7 +156,8 @@ def run(config_path: str) -> None:
         state.update_ingestion_status(status_dict)
 
         try:
-            result = inference.predict(frame)
+            with state.inference_lock:
+                result = inference.predict(frame)
             health.clear_reason("INFERENCE_RUNTIME_FAILED")
         except InferenceRuntimeError as exc:
             health.set_degraded(True, "INFERENCE_RUNTIME_FAILED")
@@ -162,6 +166,7 @@ def run(config_path: str) -> None:
                 inference = StubInferenceBackend(config.inference.stub_classes, config.inference.top_k)
                 inference.load()
                 health.clear_reason("INFERENCE_RUNTIME_FAILED")
+                state.inference = inference
             continue
 
         quality_ok = quality_gate(result)
@@ -232,6 +237,7 @@ def run(config_path: str) -> None:
             config = loaded.config
             mapper.update(config.mapping)
             decision_engine = DecisionEngine(config.decision)
+            state.config = config
             logger.info("config_reloaded", extra={"extra": {"checksum": loaded.checksum}})
 
     output_backend.stop()

@@ -67,7 +67,11 @@ cp "$ROOT_DIR/debian/postrm" "$DEBIAN_DIR/postrm"
 cp "$ROOT_DIR/debian/conffiles" "$DEBIAN_DIR/conffiles"
 chmod 0755 "$DEBIAN_DIR/postinst" "$DEBIAN_DIR/prerm" "$DEBIAN_DIR/postrm"
 
-python3 "$ROOT_DIR/scripts/build_deb_portable.py" "$PKG_ROOT" "$BUILD_DIR/scale-vision_${VERSION}_all.deb"
+if command -v dpkg-deb >/dev/null 2>&1; then
+  (cd "$BUILD_DIR" && dpkg-deb --build pkgroot "scale-vision_${VERSION}_all.deb")
+else
+  python3 "$ROOT_DIR/scripts/build_deb_portable.py" "$PKG_ROOT" "$BUILD_DIR/scale-vision_${VERSION}_all.deb"
+fi
 
 mkdir -p "$ROOT_DIR/ejecutable"
 cp "$BUILD_DIR/scale-vision_${VERSION}_all.deb" "$ROOT_DIR/ejecutable/scale-vision_${VERSION}_all.deb"
