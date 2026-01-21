@@ -93,7 +93,7 @@ GUI installer launcher:
 - If Ubuntu shows it as text, run `chmod +x ScaleUP-Installer.desktop` and then right-click → Allow Launching.
 
 Single-file installer:
-- `ejecutable/ScaleUP-Installer.run` is a self-extracting installer. Double-click to open Software Install.
+- `ejecutable/ScaleUP-Installer.run` is a renamed `.deb` so double-click opens Software Install.
 
 Uninstaller:
 - After install, the uninstaller is available at `/opt/scale-vision/uninstall/ScaleUP-Uninstaller.run`.
