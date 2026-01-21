@@ -1,0 +1,278 @@
+BASE DE ARQUITECTURA (JETSON/UBUNTU + RECONOCIMIENTO DE FRUTA EN BOLSA + ETPOS/BALANZA)
+Versión 0.3 (incluye Video Ingestion, cableado físico POS-balanza, e integración de modelo base desde repo externo)
+
+Objetivo
+Construir una base confiable, extensible y exportable como aplicación instalable en Ubuntu, que reconozca fruta envuelta en bolsa mediante cámara y “inyecte” el producto reconocido en el flujo de pesaje/venta en ETPOS usando canales de entrada compatibles con periféricos (no una API documentada). Debe soportar modo prueba (sin balanza ni POS) y modo producción (con balanza/POS conectados). En modo prueba debe poder ingerir archivos (imagen o video). En modo producción debe ingerir video en vivo desde una cámara conectada al server. Esta base sirve como punto de partida para desarrollar, iterar y endurecer el sistema. En esta versión, además, se define cómo integrar un modelo base de reconocimiento de frutas/verduras desde un repositorio externo, manteniendo el core independiente.
+
+Contexto de integración con ETPOS
+ETPOS opera modo Balanza y configura periféricos en Sistema → Configurar → Periféricos → Dispositivos, donde se definen Puerto, Modelo y Activo. También se menciona “Dispositivo serie” como categoría de periféricos seriales, con ejemplos típicos como lectores por puerto serie. Esto sugiere que la integración más robusta, sin depender de SDK/API, es emular un periférico de entrada tipo “lector” por USB (HID teclado) o por RS-232/USB-serial, y dejar que ETPOS resuelva el producto por su catálogo interno.
+
+Principio operativo
+El sistema decide un “código” de producto que ETPOS pueda resolver, ya sea PLU/código de artículo o un EAN configurado. Ese código se envía por un canal que ETPOS interpreta como entrada de lector. La confiabilidad se logra principalmente en la capa de decisión, con umbral de confianza, margen entre top1 y top2, votación temporal, anti-repetición y gates de calidad. La confiabilidad también depende de la robustez operacional, con reconexión de cámara, backpressure, health checks, y un kill switch para bloquear emisión sin apagar el servicio.
+
+Cambio principal v0.2 mantenido en v0.3
+Se introduce y mantiene una capa de Video Ingestion con backends intercambiables. La app puede ingerir video en vivo desde cámara en producción, y también puede ingerir archivos (imagen o video) para pruebas, demos y debugging. El core de inferencia y decisión queda idéntico. Solo cambian los backends de entrada y salida según modo.
+
+Cambio principal v0.3
+Se incorporan dos piezas operacionales críticas. La primera es la definición explícita del cableado físico y el punto exacto de integración con balanza y POS, para evitar suposiciones erróneas de que el Jetson debe hablar directamente con la balanza. La segunda es la incorporación de un “Modelo Base” proveniente de un repo externo, con un proceso estándar de extracción, exportación y uso, sin acoplar el core del sistema a un único modelo o framework.
+
+DIAGRAMA DE ARQUITECTURA (ASCI, lógica de software)
+                    +------------------------------------------------------+
+                    |                   Control Plane                      |
+                    |  Config, health, metrics, dashboard local (opcional) |
+                    |  Modo: test | production                              |
+                    +------------------------------+-----------------------+
+                                                   |
+                                                   v
++-------------------------+        +-----------------------------------------+
+| Live Camera Backend      |        |              Video Ingestion           |
+| (CSI/USB)                +------->|  source = camera | file                 |
+| RTSP opcional            |        |  Normaliza frames, timestamps, fps      |
++-------------------------+        |  Buffer, backpressure, reconexión        |
+                                   +------------------------------+----------+
++-------------------------+                                       |
+| File Backend             |                                       v
+| video (mp4) / imagen     +---------------------------> +-------------------+
+| replay realtime o fast   |                            | Inference Backend  |
++-------------------------+                            | ONNX / TensorRT     |
+                                                       | Stub determinista   |
+                                                       +----------+----------+
+                                                                  |
+                                                                  v
+                                                       +---------------------+
+                                                       | Decision Engine      |
+                                                       | state machine        |
+                                                       | estabilidad, gates   |
+                                                       | cooldown, debounce   |
+                                                       +----------+----------+
+                                                                  |
+                                                                  v
+                                                       +---------------------+
+                                                       | Product Mapper       |
+                                                       | class -> PLU/EAN     |
+                                                       +----------+----------+
+                                                                  |
+                                                                  v
+                                                       +---------------------+
+                                                       | Output Adapter       |
+                                                       | test | serial | hid  |
+                                                       +----------+----------+
+                                                                  |
+                                                                  v
+                                                        +--------------------+
+                                                        | Terminal ETPOS/POS |
+                                                        | Entrada lector     |
+                                                        +--------------------+
+                                                                  |
+                                                                  v
+                                                             Balanza física
+
+DIAGRAMA DE CABLEADO FÍSICO (ASCI, enlaces reales)
+                 (camino de visión)                     (camino de inyección)               (camino de peso)
+Cámara USB/CSI  -------------------->  Jetson/Server  ------------------------>  POS con ETPOS  <----------------  Balanza
+                                      (scale-vision)      Serial (recomendado)                   RS-232 o USB según modelo
+                                                         o HID (alternativa)
+
+Cableado y conectividad, definición precisa de responsabilidades
+La balanza no se conecta al Jetson para el alcance de esta arquitectura. La balanza se conecta al POS donde corre ETPOS, y ETPOS lee el peso por su canal de balanza configurado. La app scale-vision se conecta al POS para inyectar el código del producto como si fuera un lector. Así, el peso sigue viniendo desde la balanza a ETPOS, y el “producto” viene desde scale-vision a ETPOS, sin mezclar caminos.
+
+Conexión balanza ↔ POS/ETPOS
+La conexión típica depende del modelo de balanza y del hardware del POS. Usualmente es RS-232 (DB9) hacia un puerto COM, o USB que se presenta como puerto serial o periférico identificado. ETPOS configura la balanza eligiendo Puerto, Modelo y si está Activo. Esto se trata como “camino de peso” y se valida primero, de manera independiente al proyecto de visión.
+
+Conexión Jetson ↔ POS/ETPOS
+El Jetson se presenta como “lector” para inyectar el código. La opción recomendada para el primer POC es serial por USB-serial hacia el POS, porque es más determinista y más simple de endurecer. La opción alternativa es HID (emulación de teclado/lector), útil cuando el POS no permite lector serial. En ambos casos, el contrato es que ETPOS recibe un texto (código) más un terminador, y lo procesa como entrada de lector.
+
+Conexión cámara ↔ Jetson
+La cámara se conecta al Jetson por USB o CSI. En producción, la ingestión es por cámara. En prueba, la ingestión es por archivo. Si existe RTSP en la tienda, se mantiene como opción futura, no obligatoria en el primer entregable.
+
+Definición de “app” y empaquetado para Ubuntu
+La “app” se diseña como un daemon con una CLI única, con opción de dashboard web local en localhost para monitoreo y modo prueba. Se entrega como instalador Ubuntu en formato .deb para integrar systemd, permisos y estructura de directorios. Si se requiere un binario portable de una sola pieza, se puede ofrecer AppImage adicional, pero el .deb es preferible para producción en servers y Jetson.
+
+Límites prácticos de “todo en un solo archivo”
+Si se usa GPU con TensorRT/CUDA, el host debe tener runtime/driver compatible. El instalador puede incluir el binario y el modelo, pero normalmente no incluye el driver GPU del sistema. En Jetson, el stack lo provee JetPack. En Ubuntu x86_64 con NVIDIA, lo provee el driver. El instalador debe validar prerequisitos y fallar con mensaje claro si falta runtime.
+
+Modelo base de reconocimiento, repositorio externo
+Se define un “Modelo Base” proveniente de un repositorio público, para acelerar el primer prototipo, pero sin acoplar la app a un framework específico. El repositorio de referencia es:
+https://github.com/Kavan-Patel/Fruits-And-Vegetable-Detection-for-POS-with-Deep-Learning
+
+Reglas de integración del modelo base
+La app no debe depender de clonar ese repo dentro del repositorio principal como submódulo obligatorio para ejecutar el stub. El stub debe funcionar siempre. La integración del modelo externo debe ser opcional y activable por configuración. La app debe respetar licencias y no debe incluir pesos en el repo principal si la licencia o distribución no lo permite. La forma recomendada es proveer scripts que clonan/descargan el repo externo a una ruta de datos del sistema, y luego exportan el modelo a un artefacto estándar para inferencia, preferiblemente ONNX.
+
+Estrategia de inferencia estándar en v0.3
+El backend baseline para inferencia portable es ONNX Runtime. TensorRT queda como optimización posterior para Jetson. El modelo externo, si está en PyTorch u otro formato, se exporta a ONNX para correr en ONNX Runtime. Si el repo externo ya incluye un ONNX, se usa directamente. Si el repo externo no incluye pesos públicos o no es exportable en el estado actual, el sistema mantiene el stub determinista y se documenta el TODO con pasos explícitos.
+
+Proceso recomendado para integrar el modelo externo
+Primero se clona el repo externo a /var/lib/scale-vision/models/external/kavan_patel/ con un script reproducible. Luego se identifica el artefacto de pesos y la arquitectura del modelo en ese repo. Después se implementa un “adapter” que sabe leer el modelo y exportarlo a ONNX, o bien cargar el ONNX preexistente. Finalmente se verifica el pipeline de preprocesamiento y postprocesamiento para producir top-k clases con probabilidades. El sistema debe registrar el hash del modelo ONNX, la versión del repo externo, y la versión del preprocesamiento para trazabilidad.
+
+Contrato de salida de Inference Backend (conceptual)
+Cada frame produce top_k como lista de (class_id, prob), y un objeto aux con señales opcionales de calidad como blur_score o glare_score, además de un boolean quality_ok. En detección, si el modelo devuelve bboxes y clases, se debe derivar un top-k consistente, por ejemplo eligiendo el objeto dominante, o agregando scores por clase. La app debe ser consistente y determinista.
+
+Módulo Control Plane
+Responsabilidad: cargar config, exponer health y métricas, habilitar recarga de config, exponer endpoints de debug, y gestionar el modo test/production y el backend de ingesta, inferencia y salida. Debe administrar el estado global de degradación para bloquear emisiones.
+
+Módulo Video Ingestion
+Responsabilidad: producir un stream de frames normalizados con metadata consistente, independiente de si la fuente es cámara o archivo. Implementa backpressure y un buffer acotado para estabilidad. Implementa reconexión y detección de freeze en producción. Debe entregar diagnósticos como fps_in, drops, queue_ms, y staleness.
+
+Módulo Inference Backend
+Responsabilidad: ejecutar modelo(s) y producir top-k por frame. Se soportan, como mínimo, un backend stub determinista y un backend ONNX. Se agrega un flujo para “External Model Integration” que termina en un ONNX usable por el backend ONNX. El sistema debe permitir seleccionar backend por config y fallar seguro si el modelo no existe, volviendo a modo degradado o a stub según configuración.
+
+Módulo Decision Engine (control de confiabilidad)
+Responsabilidad: transformar predicciones frame-a-frame en una decisión estable y segura, evitando inyecciones erróneas y repetidas. Se diseña como máquina de estados con estabilidad temporal y anti-repetición. Los estados son IDLE, OBSERVING, LOCKED y COOLDOWN. La emisión ocurre solo una vez por episodio, y solo si se cumplen umbral de confianza, margen top1-top2, y gates de calidad y salud del sistema.
+
+Reglas base sugeridas
+La ventana temporal recomendada es 0.5 a 1.0 segundos. La votación se implementa como mayoría ponderada por probabilidad. El umbral mínimo de confianza inicia en 0.78 y el margen mínimo inicia en 0.10, ambos ajustables. El cooldown inicia en 2500 ms. La salida de COOLDOWN a IDLE ocurre por cambio fuerte de escena, caída sostenida de confianza, o timeout. Si ingestion está degradado, si inference falla, o si quality_ok es false, el engine debe bloquear emisión y forzar IDLE.
+
+Gates de calidad recomendados
+Si blur_score es alto, bloquear emisión. Si glare_score es alto, bloquear emisión o exigir mayor margen/confianza. Si ingestion marca staleness, bloquear emisión. Estas métricas pueden ser stubs iniciales y mejorar iterativamente, pero la interfaz debe existir.
+
+Módulo Product Mapper
+Responsabilidad: mapear class_id a un código para ETPOS (PLU o EAN). Debe ser editable sin redeploy. Debe soportar alias, deshabilitar clases, y fallback a “no emitir” si no hay mapeo. Debe mantener auditoría de cambios y checksum de config. Debe permitir un mapeo distinto por “perfil” de tienda si es necesario.
+
+Módulo Output Adapter
+Responsabilidad: enviar el código seleccionado al destino correcto según modo. En modo test no inyecta, solo registra y expone endpoints. En modo producción emite por serial o por HID. La recomendación inicial es serial.
+
+Observabilidad y diagnósticos
+Logs estructurados por evento. Cada decisión debe registrar request_id, timestamp, modo, source, top-k, confianza, margen, código emitido, latencia de inferencia, latencia total, reason_code. Métricas mínimas incluyen fps_in, fps_processed, drops, queue_ms, p95_inference_ms, emit_rate, block_rate, reconnection_count. /health debe degradar o fallar si ingest no entrega frames, si inference cae, o si output falla. Ante degradación, el Decision Engine debe bloquear emisión.
+
+MODOS DE OPERACIÓN v0.3
+
+Modo prueba
+Fuente de video por archivo, imagen o video. Output test. Inferencia por stub o por ONNX si el modelo está instalado. Objetivo: desarrollo sin POS/balanza, pruebas reproducibles, y debugging. Las corridas deben registrar hash del archivo, versión del modelo y parámetros de replay.
+
+Modo producción
+Fuente de video por cámara conectada al server. Output serial o hid. Inferencia por ONNX o TensorRT si está disponible. Objetivo: integración real con POS y balanza. Se valida incrementalmente, comenzando por un código constante para validar el canal, luego mapeo real, y luego habilitación de Decision Engine completo.
+
+Estructura recomendada en el sistema Ubuntu
+Binario en /usr/local/bin/scale-vision. Config en /etc/scale-vision/config.json. Modelos en /var/lib/scale-vision/models/. Modelos externos en /var/lib/scale-vision/models/external/. Datos de prueba en /var/lib/scale-vision/samples/ opcional. Logs en /var/log/scale-vision/. Servicio systemd en /etc/systemd/system/scale-vision.service.
+
+Plantilla de configuración (conceptual, para implementar)
+mode: test | production
+
+ingestion:
+  source: camera | file | rtsp
+  normalize:
+    width: 640
+    height: 640
+    fps: 15
+  buffer:
+    max_ms: 800
+    drop_policy: drop_oldest
+  camera:
+    device: /dev/video0
+    backend: gstreamer
+    gstreamer_pipeline: "<pipeline>"
+    reconnect:
+      enabled: true
+      backoff_ms: 1000
+      max_backoff_ms: 10000
+    freeze_detection:
+      enabled: true
+      max_stale_ms: 1200
+  file:
+    path: /var/lib/scale-vision/samples/sample.mp4
+    replay_mode: realtime | fast
+    loop: false
+    start_ms: 0
+    duration_ms: 0
+
+inference:
+  backend: stub | onnx | tensorrt
+  model_path: /var/lib/scale-vision/models/model.onnx
+  top_k: 5
+  device: gpu | cpu
+  external:
+    enabled: false
+    provider: kavan_patel
+    repo_url: "https://github.com/Kavan-Patel/Fruits-And-Vegetable-Detection-for-POS-with-Deep-Learning"
+    checkout: "main"
+    install_dir: "/var/lib/scale-vision/models/external/kavan_patel"
+    export:
+      enabled: true
+      output_onnx_path: "/var/lib/scale-vision/models/model_kavan_patel.onnx"
+      input_size: 640
+
+decision:
+  window_ms: 800
+  min_confidence: 0.78
+  min_margin: 0.10
+  cooldown_ms: 2500
+  require_stable_frames: 8
+  block_on_ingestion_degraded: true
+
+mapping:
+  default_action: block
+  classes:
+    apple_red:
+      code_type: plu
+      code: "4012"
+    banana:
+      code_type: plu
+      code: "4011"
+
+output:
+  backend: test | serial | hid
+  suffix: "\n"
+  serial:
+    device: /dev/ttyUSB0
+    baudrate: 9600
+    parity: none
+    stopbits: 1
+    terminator: "\r\n"
+
+safety:
+  kill_switch_file: /etc/scale-vision/disable_output
+
+http:
+  enabled: true
+  bind: 127.0.0.1
+  port: 8080
+
+PLAN PASO A PASO PARA DESARROLLAR LA APP (UBUNTU) v0.3
+Este plan asume una app monolítica “scale-vision” que corre como servicio systemd, con backends seleccionables por config, y entrega final como instalador .deb. Este plan agrega un paso explícito para integrar el modelo base externo y exportarlo a ONNX.
+
+Paso 1: Definir el contrato interno y scaffolding del proyecto
+Definir tipos Frame, InferenceResult, DecisionEvent, OutputCommand y HealthStatus. Definir interfaces IngestionBackend, InferenceBackend y OutputBackend. Crear CLI scale-vision con --config. Integrar logging estructurado y versionado semántico. Dejar el stub determinista listo desde el día 1.
+
+Paso 2: Implementar Video Ingestion con backend file primero
+Implementar lectura de imagen y video con normalización y timestamps. Implementar replay realtime y fast, loop y segmentación. Implementar buffer acotado con drop_oldest. Exponer /ingestion/status y /health básico. Validar estabilidad de memoria y throughput.
+
+Paso 3: Implementar backend camera en Ubuntu
+Implementar pipeline estable de cámara, fijando resolución y fps. Implementar reconexión con backoff. Implementar freeze detection por staleness. Validar desconexiones repetidas y recuperación sin reiniciar el proceso.
+
+Paso 4: Implementar Inference Backend baseline portable (ONNX Runtime) y mantener stub
+Implementar preprocesamiento consistente, y salida top-k. Mantener el stub determinista como fallback. Validar determinismo sobre file ingestion.
+
+Paso 5: Integrar el modelo externo como fuente y exportarlo a ONNX
+Implementar scripts reproducibles para clonar el repo externo a /var/lib/scale-vision/models/external/kavan_patel. Implementar un “export pipeline” que, cuando existan pesos y arquitectura en el repo externo, exporte a ONNX y lo copie a /var/lib/scale-vision/models/. Si no hay pesos o export no es posible, documentar exactamente qué falta y mantener stub+onnx funcional. Registrar versión del repo, hash del ONNX y parámetros de exportación.
+
+Paso 6: Implementar Decision Engine con máquina de estados
+Implementar acumulación en ventana, votación, umbral y margen. Implementar episodios y cooldown, con reset por cambio de escena o timeout. Implementar reason_code completo. Validar “una emisión por episodio” y bloqueo con baja confianza o degradación.
+
+Paso 7: Implementar Product Mapper y reload seguro
+Implementar carga de mapping desde config y reload sin downtime. Implementar alias y disabled classes. Implementar audit log de cambios y checksum. Validar cambios en caliente.
+
+Paso 8: Implementar Output Adapter test y endpoints de debug
+Implementar escritura de decisions.log y /last-decision. Opcionalmente un dashboard mínimo. Validar end-to-end sin POS.
+
+Paso 9: Implementar Output Adapter serial (producción inicial)
+Implementar escritura segura a puerto serial y manejo de errores. Implementar reconexión de puerto. Implementar permisos y grupos dialout, y reglas udev si aplica. Validar con hardware serial de prueba.
+
+Paso 10: Integración con ETPOS en ambiente controlado, con cableado validado por separado
+Validar primero que la balanza entrega peso a ETPOS por su canal normal. Luego validar que ETPOS acepta un código fijo desde el Jetson por serial o HID. Solo después habilitar IA y mapeo real. Ajustar terminador, baudrate y configuración de periférico en ETPOS para que el flujo sea estable.
+
+Paso 11: Backend TensorRT para Jetson (si aplica)
+Convertir el ONNX a engine. Alinear preprocesamiento con baseline. Medir p95 de latencia y ajustar buffer/fps. Mantener fallback a ONNX si el engine no carga.
+
+Paso 12: Hardening operacional
+Endurecer /health con degradación y bloqueo automático de output. Implementar kill switch file para deshabilitar output sin detener el servicio. Implementar rotación de logs y límites de disco. Ejecutar pruebas de estrés con cámara con glitches, inference lenta, disco lleno, y reinicios. Asegurar que ante cualquier degradación el sistema no emite.
+
+Paso 13: Empaquetado como instalador Ubuntu (.deb)
+Definir layout de archivos, instalar binario, config como conffile, modelos y logs. Implementar postinst con creación de directorios, permisos, systemd enable, y grupos necesarios video y dialout. Implementar prerm/postrm para detener servicio y limpiar selectivamente. Implementar comando scale-vision install-check para prerequisitos y permisos.
+
+Paso 14: Pipeline de build y release
+CI para compilar y empaquetar .deb. Artefactos por arquitectura, amd64 para servers Ubuntu y arm64 para Jetson. Versionado y publicación de releases. Mantener un changelog con cambios de config y compatibilidad.
+
+Paso 15: Validación en tienda y cierre de loop de dataset
+Definir catálogo inicial y mapping. Medir tasa top1, tasa top3, latencia total, tasa de bloqueos, y tasa de repetición 0. Registrar casos límite y generar dataset real para iterar. Versionar dataset y parámetros de decisión para evitar regressions.
+
+FIN

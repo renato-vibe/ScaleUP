@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.venv/
+.venv*/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+ejecutable/
+
+# OS files
+.DS_Store
+
+# Local data
+local_logs/
+
+# Editors
+.vscode/

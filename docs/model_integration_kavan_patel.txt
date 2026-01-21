@@ -1,0 +1,33 @@
+MODEL INTEGRATION: KAVAN PATEL REPO
+
+Source repository
+https://github.com/Kavan-Patel/Fruits-And-Vegetable-Detection-for-POS-with-Deep-Learning
+
+Rules
+- The core system must run without this repo (stub inference always works).
+- Do not copy weights into the main repo if the license does not allow redistribution.
+- Integration is optional and enabled only by config.
+
+Reproducible steps
+1) Clone the external repo:
+   sudo bash scripts/fetch_external_model.sh
+
+2) Attempt ONNX export (best effort):
+   sudo bash scripts/export_external_to_onnx.sh
+
+3) Update config and run:
+   scale-vision run --config samples/sample_config_external_model.json
+
+Notes / TODO
+- The external repo may not include public weights or a ready export script.
+- If export fails with TODO_EXPORT_NOT_IMPLEMENTED, inspect the repo to identify:
+  - model architecture entrypoint
+  - weight file(s) and license
+  - preprocessing and label map
+- Once identified, implement an export helper and update
+  src/scale_vision/inference/external_kavan_patel_adapter.py
+
+Troubleshooting
+- NO_ONNX_FOUND: no .onnx file exists in the repo.
+- REPO_NOT_FOUND: the repo was not cloned to /var/lib/scale-vision/models/external/kavan_patel.
+- onnxruntime_missing: install onnxruntime in your environment.

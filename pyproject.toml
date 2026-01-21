@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scale-vision"
+version = "0.1.0"
+description = "Scale Vision daemon, API, and CLI for fruit recognition and POS integration"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Proprietary"}
+authors = [{name = "Scale Vision"}]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX :: Linux",
+]
+
+dependencies = [
+  "fastapi>=0.110.0",
+  "uvicorn>=0.27.0",
+  "pydantic>=1.10.0,<3.0.0",
+  "numpy>=1.23.0",
+  "opencv-python-headless>=4.7.0",
+  "onnxruntime>=1.16.0",
+  "pyserial>=3.5",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4.0",
+  "ruff>=0.4.0",
+]
+
+[project.scripts]
+scale-vision = "scale_vision.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,34 @@
+#!/bin/sh
+set -e
+
+if ! id -u scalevision >/dev/null 2>&1; then
+  useradd --system --home /var/lib/scale-vision --shell /usr/sbin/nologin scalevision
+fi
+
+usermod -a -G video scalevision || true
+usermod -a -G dialout scalevision || true
+
+mkdir -p /var/lib/scale-vision/models /var/lib/scale-vision/models/external /var/lib/scale-vision/samples /var/log/scale-vision
+chown -R scalevision:scalevision /var/lib/scale-vision /var/log/scale-vision
+
+if [ -f /opt/scale-vision/uninstall/ScaleUP-Uninstaller.run ]; then
+  chmod 0755 /opt/scale-vision/uninstall/ScaleUP-Uninstaller.run || true
+fi
+
+APP_DIR=/opt/scale-vision/app
+WHEELS_DIR=/opt/scale-vision/wheels
+VENV_DIR=/opt/scale-vision/venv
+if [ ! -x "$VENV_DIR/bin/scale-vision" ]; then
+  if [ ! -d "$VENV_DIR" ]; then
+    python3 -m venv "$VENV_DIR"
+  fi
+  "$VENV_DIR/bin/pip" install --upgrade pip
+  if [ -d "$WHEELS_DIR" ]; then
+    "$VENV_DIR/bin/pip" install --no-index --find-links "$WHEELS_DIR" --no-compile scale-vision
+  elif [ -d "$APP_DIR" ]; then
+    "$VENV_DIR/bin/pip" install --no-cache-dir --no-compile "$APP_DIR"
+  fi
+fi
+
+systemctl daemon-reload
+systemctl enable --now scale-vision.service || true

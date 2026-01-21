@@ -1,0 +1,48 @@
+{
+  "mode": "test",
+  "ingestion": {
+    "source": "file",
+    "normalize": {"width": 640, "height": 640, "fps": 10},
+    "buffer": {"max_ms": 800, "drop_policy": "drop_oldest", "max_frames": 30},
+    "file": {
+      "path": "/var/lib/scale-vision/samples/sample.ppm",
+      "replay_mode": "realtime",
+      "loop": true,
+      "start_ms": 0,
+      "duration_ms": 0,
+      "allow_missing": true
+    }
+  },
+  "inference": {
+    "backend": "onnx",
+    "model_path": "/var/lib/scale-vision/models/model_kavan_patel.onnx",
+    "top_k": 5,
+    "device": "cpu",
+    "external": {
+      "enabled": true,
+      "provider": "kavan_patel",
+      "repo_url": "https://github.com/Kavan-Patel/Fruits-And-Vegetable-Detection-for-POS-with-Deep-Learning",
+      "checkout": "main",
+      "install_dir": "/var/lib/scale-vision/models/external/kavan_patel",
+      "export": {"enabled": true, "output_onnx_path": "/var/lib/scale-vision/models/model_kavan_patel.onnx", "input_size": 640}
+    }
+  },
+  "decision": {
+    "window_ms": 800,
+    "min_confidence": 0.78,
+    "min_margin": 0.1,
+    "cooldown_ms": 2500,
+    "require_stable_frames": 6,
+    "scene_change_threshold": 0.4,
+    "block_on_ingestion_degraded": true
+  },
+  "mapping": {"default_action": "block", "classes": {}},
+  "output": {
+    "backend": "test",
+    "suffix": "\n",
+    "serial": {"device": "/dev/ttyUSB0", "baudrate": 9600, "parity": "none", "stopbits": 1, "terminator": "\r\n", "reconnect_ms": 1000}
+  },
+  "safety": {"kill_switch_file": "/etc/scale-vision/disable_output"},
+  "http": {"enabled": true, "bind": "127.0.0.1", "port": 8080},
+  "logging": {"level": "INFO", "log_dir": "/var/log/scale-vision", "json_log_file": "events.jsonl"}
+}

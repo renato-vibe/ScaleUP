@@ -1,0 +1,8 @@
+Package: scale-vision
+Version: 0.1.0
+Section: utils
+Priority: optional
+Architecture: all
+Depends: python3, python3-venv, python3-pip
+Maintainer: Scale Vision
+Description: Scale Vision daemon, API, and CLI

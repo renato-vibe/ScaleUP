@@ -1,0 +1,26 @@
+WIRING AND POS INTEGRATION
+
+ASCII diagram
+
+  (vision path)                 (injection path)                 (weight path)
+Camera USB/CSI  ------------>  Jetson/Server  --------------->  POS/ETPOS  <-------------  Scale
+                                (scale-vision)    Serial (rec.)                  RS-232 or USB
+                                                   or HID (alt)
+
+Responsibilities
+- The scale connects to the POS/ETPOS and ETPOS reads weight from its configured scale port.
+- The Jetson/Server connects to the POS/ETPOS as a "reader" to inject the product code.
+- The camera connects to the Jetson/Server (USB or CSI).
+
+Preflight checklist (recommended sequence)
+1) Confirm ETPOS reads weight from the scale with its normal configuration.
+2) Confirm ETPOS accepts a fixed code from Jetson/Server via serial or HID.
+3) Enable mapping + Decision Engine and validate end-to-end.
+
+Serial parameters to confirm in ETPOS
+- Port: /dev/ttyUSB* or /dev/ttyACM* (on the POS side)
+- Baudrate, parity, stopbits, terminator
+
+Safety note
+If any of the three links fail (scale weight, product code injection, or camera ingestion),
+scale-vision must degrade and NOT emit.

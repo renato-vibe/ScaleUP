@@ -1,0 +1,46 @@
+{
+  "mode": "test",
+  "ingestion": {
+    "source": "file",
+    "normalize": {"width": 640, "height": 640, "fps": 10},
+    "buffer": {"max_ms": 800, "drop_policy": "drop_oldest", "max_frames": 30},
+    "file": {
+      "path": "samples/sample.ppm",
+      "replay_mode": "realtime",
+      "loop": true,
+      "start_ms": 0,
+      "duration_ms": 0,
+      "allow_missing": true
+    }
+  },
+  "inference": {
+    "backend": "stub",
+    "top_k": 3,
+    "stub_classes": ["apple_red", "banana", "orange"]
+  },
+  "decision": {
+    "window_ms": 800,
+    "min_confidence": 0.6,
+    "min_margin": 0.1,
+    "cooldown_ms": 1500,
+    "require_stable_frames": 4,
+    "scene_change_threshold": 0.4,
+    "block_on_ingestion_degraded": true
+  },
+  "mapping": {
+    "default_action": "block",
+    "classes": {
+      "apple_red": {"code_type": "plu", "code": "4012"},
+      "banana": {"code_type": "plu", "code": "4011"},
+      "orange": {"code_type": "plu", "code": "4013"}
+    }
+  },
+  "output": {
+    "backend": "test",
+    "suffix": "\n",
+    "serial": {"device": "/dev/ttyUSB0", "baudrate": 9600, "parity": "none", "stopbits": 1, "terminator": "\r\n", "reconnect_ms": 1000}
+  },
+  "safety": {"kill_switch_file": "/etc/scale-vision/disable_output"},
+  "http": {"enabled": true, "bind": "127.0.0.1", "port": 8080},
+  "logging": {"level": "INFO", "log_dir": "/var/log/scale-vision", "json_log_file": "events.jsonl"}
+}

@@ -1,0 +1,275 @@
+PROMPT PARA GPT-5.2 CODEX (VS CODE) — SCALE-VISION (UBUNTU) IMPLEMENTACIÓN COMPLETA + .DEB
+Versión: 1.2 (usa el archivo de arquitectura como fuente de verdad)
+
+Contexto obligatorio (fuente de verdad)
+Vas a recibir como contexto adicional un archivo .txt con la arquitectura y plan detallado:
+scale_vision_arch_v0_3_with_model_wiring.txt contenido en la repo
+
+Regla: ese .txt es la especificación principal. Si hay inconsistencias entre este prompt y el .txt, prioriza el .txt. No inventes requisitos que no estén en el .txt. Si falta algo importante, crea un TODO explícito en el repo y sigue.
+
+Repositorio de modelo base (fuente externa, obligatorio considerar)
+Se usará como referencia un repo externo para el modelo base de frutas/verduras:
+https://github.com/Kavan-Patel/Fruits-And-Vegetable-Detection-for-POS-with-Deep-Learning
+
+Reglas para esta integración:
+- No asumir que el repo trae pesos listos, ONNX listo, o un pipeline exportable tal cual: debes inspeccionarlo.
+- No copiar pesos al repo principal si la licencia o el repo no lo permite. La app debe funcionar sin pesos usando stub.
+- Implementar integración como opcional y activable por config, manteniendo el core desacoplado del modelo externo.
+- Agregar scripts reproducibles para clonar/descargar el repo externo a:
+  /var/lib/scale-vision/models/external/kavan_patel/
+- Implementar un flujo opcional para exportar a ONNX (si es viable con el contenido real del repo) y luego usar ONNX Runtime como backend baseline.
+- Si no hay pesos o no es exportable, dejar un TODO explícito y guiar en docs exactamente qué falta. Mantener el sistema operativo con inference=stub.
+
+Rol
+Eres un Tech Lead Senior de Edge AI + Visión + MLOps + Packaging en Linux. Debes generar un repositorio completo y operativo en Ubuntu para la app “scale-vision” (daemon + CLI + API local) y su instalador .deb, siguiendo estrictamente el archivo .txt de arquitectura.
+
+Objetivo del producto (resumen)
+Implementar una app instalable en Ubuntu que:
+1) Ingiere video en vivo desde cámara conectada al server en producción, o ingiere archivo (imagen/video) en modo prueba.
+2) Ejecuta inferencia con backend baseline ONNX Runtime primero, con fallback a stub determinista para que el sistema corra sin modelo real.
+3) Aplica un Decision Engine robusto (máquina de estados) para emitir máximo 1 código por episodio, con umbrales, margen top1-top2, cooldown y gates de calidad.
+4) Mapea class_id → código (PLU/EAN) mediante config editable y reload seguro.
+5) Emite el código por Output Adapter: test (logs+API) o serial (producción inicial). HID queda como stub/placeholder (estructura preparada).
+6) Expone endpoints locales: /health, /metrics (mínimo), /last-decision, /ingestion/status.
+7) Corre como servicio systemd y se empaqueta como instalador .deb con postinst/prerm/postrm y un comando install-check.
+8) Incluye una vía opcional para usar el modelo externo (Kavan Patel) exportándolo a ONNX o integrándolo como adapter, sin romper el modo stub.
+
+Entregable final exigido por el usuario
+Debes generar el repo completo con código, scripts, systemd, empaquetado Debian y documentación, de forma que:
+- Un dev pueda correr modo test con un archivo sin cámara ni modelo real.
+- Un dev pueda correr modo camera en Ubuntu.
+- Se pueda generar e instalar un .deb.
+- Se pueda habilitar y operar vía systemd.
+- El sistema sea “fail-safe”: ante degradación, NO emite.
+
+Instrucciones de uso del archivo .txt
+- Léelo como spec principal.
+- Replica en el repo los conceptos clave: Video Ingestion Layer con backends (camera/file), Decision Engine con estados (IDLE/OBSERVING/LOCKED/COOLDOWN), Output adapters (test/serial/hid stub), config en /etc/scale-vision/config.json, logs en /var/log/scale-vision, modelos en /var/lib/scale-vision/models y modelos externos en /var/lib/scale-vision/models/external.
+- Implementa el plan paso a paso del .txt como secciones en README (con comandos reales que funcionen).
+- Incluye dentro del repo una copia del .txt (docs/architecture_v0_3.txt) y referencia desde README.
+
+Restricciones y estilo (de ingeniería)
+No hagas suposiciones invisibles: todo debe quedar explicitado en archivos del repo y en README.
+Prioriza robustez operacional, observabilidad y reproducibilidad.
+Todo error o degradación debe reflejarse en /health y debe bloquear output.
+Evita dependencias pesadas innecesarias. Mantén el sistema simple pero extensible.
+
+Stack recomendado (y por qué)
+Implementa en Python 3.10+ por velocidad y ecosistema.
+API local: FastAPI (recomendado) por tipado, OpenAPI y performance. Si eliges Flask, justifica.
+Video:
+- Backend file: OpenCV (cv2) es suficiente.
+- Backend camera: GStreamer/V4L2 preferible, pero si es complejo, implementa primera versión con OpenCV VideoCapture y deja el backend GStreamer como TODO opcional con interfaz ya creada.
+Serial: pyserial.
+Config: pydantic o dataclasses + jsonschema. (Elige uno y manténlo consistente.)
+Logging: JSON lines a archivo + rotación.
+
+Entregables obligatorios (estructura del repo)
+Debes crear, con contenido completo:
+
+Repo
+- README.md (quickstart + producción + wiring + packaging .deb + troubleshooting)
+- Makefile (targets: venv, lint, test, run-test, run-camera, build-deb)
+- pyproject.toml (preferible) o requirements.txt + setup.cfg (si no usas pyproject)
+
+src/scale_vision/
+- __init__.py
+- main.py (orquestación principal)
+- cli.py (entrypoint)
+- api.py (FastAPI app y endpoints)
+- config/
+  - loader.py (carga, validación, reload seguro)
+  - models.py (schema)
+- ingestion/
+  - base.py (interface)
+  - file_backend.py
+  - camera_backend.py
+  - rtsp_backend.py (stub o TODO si no implementas)
+  - normalization.py
+  - buffer.py (cola acotada + drop_oldest)
+- inference/
+  - base.py
+  - onnx_backend.py
+  - stub_backend.py (determinista)
+  - external_kavan_patel_adapter.py (adapter opcional, o wrapper de export a ONNX y loader)
+- decision/
+  - state_machine.py
+  - voting.py
+  - quality.py (blur/glare gates opcionales, al menos stub)
+- mapping/
+  - mapper.py
+- output/
+  - base.py
+  - test_backend.py
+  - serial_backend.py
+  - hid_stub.py
+- observability/
+  - logging.py
+  - metrics.py
+  - health.py
+
+systemd/
+- scale-vision.service
+
+debian/
+- control
+- rules (si aplica) o build script
+- postinst
+- prerm
+- postrm
+- conffiles (para proteger /etc/scale-vision/config.json si corresponde)
+
+scripts/
+- dev_setup.sh
+- run_test.sh
+- run_camera.sh
+- install_check.sh (o implementado como subcomando scale-vision install-check)
+- build_deb.sh
+- fetch_external_model.sh (clona repo externo a ruta estándar)
+- export_external_to_onnx.sh (exporta a ONNX si aplica, o deja TODO+validación)
+
+docs/
+- architecture_v0_3.txt (copia del .txt entregado por el usuario)
+- wiring_and_pos_integration.txt (cableado físico y pasos de integración POS)
+- model_integration_kavan_patel.txt (pasos reproducibles, supuestos, licencias, troubleshooting)
+
+samples/
+- README.md (cómo agregar videos/imágenes)
+- sample_config_test.json
+- sample_config_camera.json
+- sample_config_external_model.json (si es posible; si no, dejarlo y documentar TODO)
+
+Especificación funcional: Decision Engine (debe coincidir con el .txt)
+Estados: IDLE, OBSERVING, LOCKED, COOLDOWN.
+Entradas por frame: top_k, quality_ok, ingestion_ok, frame_id, timestamp.
+Parámetros: window_ms, min_confidence, min_margin, cooldown_ms, require_stable_frames, scene_change_threshold.
+Reglas:
+- Si ingestion_ok=false o quality_ok=false, NO emitir y forzar IDLE (fail-safe).
+- En OBSERVING: acumular por ventana o frames estables, votar ponderado.
+- Emitir SOLO si top1.prob >= min_confidence y (top1.prob - top2.prob) >= min_margin.
+- En LOCKED: emitir una sola vez y pasar a COOLDOWN.
+- En COOLDOWN: no emitir; salir a IDLE cuando termina episodio (scene change, caída sostenida, o timeout).
+Garantía: jamás 2 emisiones sin regresar a IDLE por fin de episodio.
+Toda no-emisión debe tener reason_code.
+
+Integración con balanza/ETPOS (mínimo necesario, no inventar API)
+La app NO se integra directamente con la balanza como dispositivo inteligente. El integration point es ETPOS/POS.
+Contrato: la app emite un “código de producto” (PLU/código interno o EAN configurado) por un canal que ETPOS interpreta como entrada de lector (serial recomendado; HID como alternativa).
+Resultado esperado: ETPOS recibe el código igual que si el cajero escaneara un código, y con eso selecciona el producto o acota la lista de opciones según configuración del POS. No asumir comportamiento exacto más allá de “ETPOS consume el código”.
+Regla fail-safe: si la predicción no supera umbrales, si hay degradación de cámara/inferencia, o si existe kill switch, NO se envía nada.
+Prueba de integración: primero validar canal con un código fijo (sin IA), luego habilitar mapping real y Decision Engine. Documentar parámetros serial (baud/parity/terminator) y cómo configurar el periférico en ETPOS.
+
+Cableado físico y conectividad (añadir al diseño y documentación del repo)
+Debes documentar explícitamente el cableado típico y la separación de responsabilidades:
+
+1) Balanza ↔ POS/ETPOS (camino de peso)
+La balanza normalmente se conecta físicamente al terminal POS (el PC donde corre ETPOS) como periférico de balanza, usando el puerto soportado por el modelo. Comúnmente:
+- RS-232 (DB9) hacia un puerto COM del POS, o
+- USB (presentándose como dispositivo serial o periférico USB identificado).
+ETPOS gestiona esta conexión por su configuración de periféricos (Puerto/Modelo/Activo). No asumir un “cable único”: depende del modelo de balanza y del POS. El repo debe indicar que este enlace es responsabilidad del POS/ETPOS y no del Jetson.
+
+2) Jetson ↔ POS/ETPOS (camino de inyección de código)
+El Jetson se conecta al POS como “lector” para inyectar el código del producto:
+- Recomendado: USB-Serial / RS-232 hacia el POS (ETPOS lo configura como “dispositivo serie/lector”).
+- Alternativo: HID/teclado (estructura preparada, implementación stub).
+El Jetson no necesita leer el peso para este alcance. El objetivo es solo “sugerir/inyectar” el producto reconocido. Si en el futuro se quisiera leer peso, sería un alcance nuevo.
+
+3) Cámara ↔ Jetson (camino de visión)
+La cámara se conecta al Jetson por USB o CSI. En producción, ingestión camera. En prueba, ingestión file.
+
+Debes crear docs/wiring_and_pos_integration.txt con:
+- Diagrama ASCII de estos 3 enlaces
+- Checklist de preflight: confirmar que ETPOS lee peso desde balanza (independiente), confirmar que ETPOS recibe código desde Jetson (independiente), luego habilitar IA
+- Nota de seguridad: si falla cualquiera de los enlaces, scale-vision debe degradar y NO emitir
+
+Especificación: Video Ingestion (debe coincidir con el .txt)
+- source = camera | file | rtsp (rtsp puede quedar stub, pero estructura debe existir)
+- Normalización: size/fps/colorespace consistente
+- Buffer acotado por tiempo o frames, con drop_oldest
+- camera:
+  - reconexión con backoff
+  - freeze detection (staleness) por max_stale_ms
+- file:
+  - imagen y video
+  - replay realtime o fast
+  - loop opcional y segmentación
+- Diagnóstico: fps_in, fps_processed, drops, queue_ms, reconnections, stale_events.
+
+Especificación: Output Serial (producción inicial)
+- Enviar ASCII código + terminator configurable.
+- Reconectar puerto si falla.
+- Nunca enviar si kill switch existe.
+- Registrar emisiones con request_id y payload.
+- Validar permisos (dialout) en install-check.
+
+Health, métricas y kill switch
+- /health: 200 si listo, 503 si degradado.
+- /last-decision: siempre responde con el último evento y reason_code.
+- /ingestion/status: métricas de ingest.
+- /metrics: mínimo (puede ser texto tipo Prometheus).
+- Kill switch file: /etc/scale-vision/disable_output. Si existe, bloquear output (registrar reason_code="KILL_SWITCH").
+
+Empaquetado Ubuntu .deb (requerido)
+- Instalar binario/entrypoint en /usr/local/bin/scale-vision
+- Config default en /etc/scale-vision/config.json (no pisar si existe)
+- Crear /var/lib/scale-vision/{models,samples,external} y /var/log/scale-vision
+- Instalar systemd unit, enable y start (opcional start; si no, documenta)
+- postinst:
+  - crear usuario “scalevision” (opcional, recomendado)
+  - agregar a grupos video y dialout (según config o siempre, documentar)
+  - permisos correctos
+- prerm/postrm:
+  - detener servicio
+  - no borrar config salvo purge
+- Incluir comando: scale-vision install-check
+  - verifica permisos /dev/video*, permisos /dev/ttyUSB*, existencia de config, y prerequisitos del backend de inferencia si aplica
+
+Quickstart obligatorio (debe funcionar sin cámara ni modelo)
+Debe existir una configuración de ejemplo que use:
+- ingestion.source=file con un video sample (puede ser placeholder, pero que corra aunque no exista, usando stub mode)
+- inference.backend=stub
+- output.backend=test
+- mapping con 2 o 3 clases dummy
+Debe correr y exponer /health y /last-decision generando eventos deterministas.
+
+Quickstart adicional (modelo externo, si existe)
+Debe existir un flujo documentado en docs/model_integration_kavan_patel.txt:
+- scripts/fetch_external_model.sh clona el repo externo a la ruta estándar
+- scripts/export_external_to_onnx.sh intenta exportar a ONNX y deja el artefacto en /var/lib/scale-vision/models/
+- sample_config_external_model.json apunta a ese ONNX y usa inference.backend=onnx
+Si no hay pesos o no es exportable, este quickstart debe fallar con error claro y dejar TODO explícito con pasos.
+
+Comandos que debes incluir en README (y deben ser reales)
+- Crear venv e instalar deps
+- Ejecutar modo test con archivo
+- Ejecutar modo camera (sin emitir, output=test)
+- Ejecutar con output=serial (documentar /dev/ttyUSB0)
+- Construir .deb
+- Instalar .deb
+- systemctl enable/start/status
+- curl /health, /last-decision
+- (opcional) fetch/export modelo externo y correr con ONNX si está disponible
+
+Proceso de trabajo que debes seguir (Codex dentro de VS Code)
+1) Crea toda la estructura de carpetas y archivos.
+2) Implementa el core mínimo end-to-end con stub inference.
+3) Implementa file ingestion.
+4) Implementa camera ingestion (OpenCV inicialmente; deja GStreamer pipeline como TODO opcional con interfaz).
+5) Implementa Decision Engine con tests unitarios.
+6) Implementa Mapper y reload seguro.
+7) Implementa Output test y Output serial.
+8) Implementa API local y endpoints requeridos.
+9) Agrega systemd unit.
+10) Agrega build .deb (script + metadata).
+11) Agrega scripts y docs de integración del modelo externo (Kavan Patel), con fallback y TODO si faltan pesos.
+12) Escribe README con quickstart, wiring, modelo externo y troubleshooting.
+13) Verifica coherencia: todo lo documentado existe y corre.
+
+Reglas finales
+No inventes hardware. No inventes modelo ni pesos.
+Debe funcionar con stub y sin cámara (modo test).
+Todo fallo bloquea output.
+Todo lo importante queda logueado y visible en endpoints.
+Entrega el repo como si fuera un producto instalable.
+
+Ahora ejecuta: usa el archivo scale_vision_arch_v0_3_with_model_wiring.txt como especificación principal y genera el repositorio completo con todo el contenido.
