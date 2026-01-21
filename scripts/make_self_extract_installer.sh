@@ -15,11 +15,6 @@ if [ ! -f "$ICON_SRC" ]; then
   ICON_SRC="$(cd "$(dirname "$0")/.." && pwd)/assets/scaleup.png"
 fi
 
-ICON_B64=""
-if [ -f "$ICON_SRC" ]; then
-  ICON_B64="$(base64 < "$ICON_SRC")"
-fi
-
 cat <<'SH' > "$OUT_FILE"
 #!/bin/sh
 set -e
@@ -30,9 +25,11 @@ mkdir -p "$cache_dir"
 icon_path="$cache_dir/scaleup.png"
 
 if [ ! -f "$icon_path" ]; then
-  cat <<'ICON_B64' | base64 -d > "$icon_path"
-__ICON_B64__
-ICON_B64
+  start=$(awk '/^__ICON_PAYLOAD__$/ {print NR+1; exit 0; }' "$self")
+  end=$(awk '/^__DEB_PAYLOAD__$/ {print NR-1; exit 0; }' "$self")
+  if [ -n "$start" ] && [ -n "$end" ] && [ "$end" -ge "$start" ]; then
+    sed -n "${start},${end}p" "$self" | base64 -d > "$icon_path" || true
+  fi
 fi
 
 if command -v gio >/dev/null 2>&1; then
@@ -82,11 +79,14 @@ exit 2
 __DEB_PAYLOAD__
 SH
 
+if [ -f "$ICON_SRC" ]; then
+  echo "__ICON_PAYLOAD__" >> "$OUT_FILE"
+  base64 < "$ICON_SRC" >> "$OUT_FILE"
+  echo "__DEB_PAYLOAD__" >> "$OUT_FILE"
+else
+  echo "__ICON_PAYLOAD__" >> "$OUT_FILE"
+  echo "__DEB_PAYLOAD__" >> "$OUT_FILE"
+fi
+
 cat "$DEB_PATH" >> "$OUT_FILE"
 chmod +x "$OUT_FILE"
-
-if [ -n "$ICON_B64" ]; then
-  perl -0pi -e 's#__ICON_B64__#'"$ICON_B64"'#s' "$OUT_FILE"
-else
-  perl -0pi -e 's#__ICON_B64__##s' "$OUT_FILE"
-fi
