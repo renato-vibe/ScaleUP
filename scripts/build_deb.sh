@@ -70,6 +70,5 @@ chmod 0755 "$DEBIAN_DIR/postinst" "$DEBIAN_DIR/prerm" "$DEBIAN_DIR/postrm"
 python3 "$ROOT_DIR/scripts/build_deb_portable.py" "$PKG_ROOT" "$BUILD_DIR/scale-vision_${VERSION}_all.deb"
 
 mkdir -p "$ROOT_DIR/ejecutable"
-cp "$BUILD_DIR/scale-vision_${VERSION}_all.deb" "$ROOT_DIR/ejecutable/"
-bash "$ROOT_DIR/scripts/make_gui_installer.sh" "$ROOT_DIR/ejecutable/scale-vision_${VERSION}_all.deb"
-bash "$ROOT_DIR/scripts/make_self_extract_installer.sh" "$ROOT_DIR/ejecutable/scale-vision_${VERSION}_all.deb"
+cp "$BUILD_DIR/scale-vision_${VERSION}_all.deb" "$ROOT_DIR/ejecutable/scale-vision_${VERSION}_all.deb"
+cp "$BUILD_DIR/scale-vision_${VERSION}_all.deb" "$ROOT_DIR/ejecutable/ScaleUP-Installer.deb"

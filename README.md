@@ -88,12 +88,8 @@ Desktop shortcut (optional):
 - The `.deb` installs a ScaleUP desktop entry in `/usr/share/applications/scaleup.desktop`.
 - Place the logo file at `logo/logo.png` before building to include the icon.
 
-GUI installer launcher:
-- After building, `ejecutable/ScaleUP-Installer.desktop` opens Software Install with progress.
-- If Ubuntu shows it as text, run `chmod +x ScaleUP-Installer.desktop` and then right-click → Allow Launching.
-
-Single-file installer:
-- `ejecutable/ScaleUP-Installer.run` is a renamed `.deb` so double-click opens Software Install.
+GUI installer (recommended):
+- After building, use `ejecutable/ScaleUP-Installer.deb` and open it with Software Install.
 
 Uninstaller:
 - After install, the uninstaller is available at `/opt/scale-vision/uninstall/ScaleUP-Uninstaller.run`.
