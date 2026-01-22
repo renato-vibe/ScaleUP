@@ -3,6 +3,7 @@
 Ubuntu daemon + CLI + local API for fruit/veg recognition and POS code injection.
 
 Source of truth: `docs/architecture_v0_3.txt`.
+Production install: see `docs/INSTALL_UBUNTU.md` (offline .deb + GUI installer).
 
 ## Repo layout
 - `src/scale_vision/`: core app (ingestion, inference, decision, mapping, outputs, API)
@@ -92,7 +93,8 @@ Desktop shortcut (optional):
 - Place the logo file at `logo/logo.png` before building to include the icon.
 
 GUI installer (recommended):
-- After building, use `ejecutable/ScaleUP-Installer.deb` and open it with Software Install.
+- After building, open `ejecutable/ScaleUP-Installer.desktop` or run `ejecutable/ScaleUP-Installer.run`.
+- The installer uses Software Install when available (and falls back to a CLI hint).
 
 Uninstaller:
 - After install, the uninstaller is available at `/opt/scale-vision/uninstall/ScaleUP-Uninstaller.run`.

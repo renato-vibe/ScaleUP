@@ -123,3 +123,5 @@ cp "$BUILD_DIR/scale-vision_${VERSION}_${DEB_ARCH}_offline.deb" \
   "$ROOT_DIR/ejecutable/scale-vision_${VERSION}_${DEB_ARCH}_offline.deb"
 cp "$BUILD_DIR/scale-vision_${VERSION}_${DEB_ARCH}_offline.deb" \
   "$ROOT_DIR/ejecutable/ScaleUP-Installer.deb"
+bash "$ROOT_DIR/scripts/make_gui_installer.sh" "$ROOT_DIR/ejecutable/ScaleUP-Installer.deb"
+bash "$ROOT_DIR/scripts/make_self_extract_installer.sh" "$ROOT_DIR/ejecutable/ScaleUP-Installer.deb"

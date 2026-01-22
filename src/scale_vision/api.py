@@ -25,82 +25,238 @@ _UI_HTML = """<!doctype html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ScaleUP - Local Console</title>
+    <title>ScaleUP - Fruits & Vegetables Detector</title>
     <style>
       :root {
         color-scheme: light;
-        --bg: #0f172a;
-        --panel: #111827;
-        --card: #0b1220;
-        --muted: #9ca3af;
-        --text: #e5e7eb;
-        --accent: #22d3ee;
-        --accent-2: #38bdf8;
-        --danger: #f97316;
+        --bg: #e9f7ff;
+        --bg-2: #e8fff5;
+        --panel: #f7fffb;
+        --card: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --accent: #1d4ed8;
+        --accent-2: #16a34a;
+        --accent-3: #0ea5e9;
+        --border: rgba(15, 23, 42, 0.16);
+        --shadow: 0 18px 45px rgba(15, 23, 42, 0.14);
+        --warn: #c2410c;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: "Fira Sans", "Noto Sans", sans-serif;
-        background: radial-gradient(1200px 600px at 20% -10%, #1e3a8a, transparent),
-                    radial-gradient(900px 500px at 120% 20%, #0f766e, transparent),
-                    var(--bg);
+        font-family: "Ubuntu", "Cantarell", "DejaVu Sans", sans-serif;
+        background: radial-gradient(900px 500px at 12% -10%, #b3ddff, transparent),
+                    radial-gradient(800px 450px at 110% 18%, #bff5d8, transparent),
+                    linear-gradient(180deg, var(--bg), var(--bg-2));
         color: var(--text);
         min-height: 100vh;
+        position: relative;
+      }
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        z-index: 0;
+        border-radius: 40%;
+        opacity: 0.6;
+        pointer-events: none;
+      }
+      body::before {
+        width: 260px;
+        height: 260px;
+        top: -70px;
+        right: -50px;
+        background: rgba(29, 78, 216, 0.18);
+      }
+      body::after {
+        width: 320px;
+        height: 320px;
+        bottom: -120px;
+        left: -80px;
+        background: rgba(22, 163, 74, 0.16);
+      }
+      header,
+      main,
+      footer {
+        position: relative;
+        z-index: 1;
       }
       header {
-        padding: 28px 32px 12px;
+        padding: 28px 32px 14px;
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        gap: 24px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 11px;
+        color: var(--muted);
       }
       header h1 {
-        margin: 0;
-        font-size: 28px;
-        letter-spacing: 0.6px;
+        margin: 6px 0;
+        font-size: 30px;
       }
-      header span {
+      header p {
+        margin: 0;
         color: var(--muted);
-        font-size: 14px;
+        max-width: 480px;
+      }
+      .header-meta {
+        display: grid;
+        gap: 8px;
+        justify-items: end;
       }
       main {
-        padding: 12px 32px 40px;
+        padding: 8px 32px 36px;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 16px;
+        grid-template-columns: minmax(280px, 1.1fr) minmax(320px, 1.4fr);
+        gap: 18px;
       }
-      .card {
-        background: linear-gradient(160deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        border-radius: 16px;
-        padding: 16px;
-        backdrop-filter: blur(6px);
-        min-height: 160px;
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+        animation: rise 0.6s ease both;
       }
-      .card h2 {
-        margin: 0 0 12px;
-        font-size: 16px;
+      .panel:nth-child(2) { animation-delay: 0.08s; }
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .panel { animation: none; }
+      }
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+      h3 {
+        margin: 0 0 6px;
+        font-size: 14px;
         color: var(--accent);
       }
+      .pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .pill {
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        border: 1px solid var(--border);
+        background: #f0f9ff;
+      }
+      .pill.accent {
+        background: rgba(22, 163, 74, 0.16);
+        border-color: rgba(22, 163, 74, 0.4);
+        color: #14532d;
+      }
+      .pill.ok { border-color: rgba(22, 163, 74, 0.6); color: #14532d; }
+      .pill.warn { border-color: rgba(194, 65, 12, 0.6); color: var(--warn); }
       .meta {
         font-size: 12px;
         color: var(--muted);
+        margin-top: 6px;
       }
-      .grid-2 {
+      .status-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
       }
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(34, 211, 238, 0.12);
-        border: 1px solid rgba(34, 211, 238, 0.35);
+      .status-card {
+        background: var(--card);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        border-radius: 14px;
+        padding: 12px;
+        min-height: 140px;
+      }
+      .controls {
+        display: grid;
+        gap: 12px;
+      }
+      .file-drop {
+        border: 2px dashed #93c5fd;
+        background: #eff6ff;
+        border-radius: 16px;
+        padding: 14px;
+        display: grid;
+        gap: 4px;
+        cursor: pointer;
+      }
+      .file-drop input {
+        display: none;
+      }
+      .file-drop span {
+        font-weight: 600;
         color: var(--accent);
-        font-size: 12px;
+      }
+      .file-drop small {
+        color: var(--muted);
+      }
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      button {
+        background: #1d4ed8;
+        color: #ecfeff;
+        font-weight: 600;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 10px 18px rgba(29, 78, 216, 0.25);
+      }
+      button:hover { transform: translateY(-1px); }
+      button.ghost {
+        background: #eafff2;
+        color: #14532d;
+        border: 1px solid rgba(22, 163, 74, 0.4);
+        box-shadow: none;
+      }
+      .detect-grid {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) minmax(260px, 1fr);
+        gap: 14px;
+      }
+      .preview-frame {
+        position: relative;
+        background: #f8fafc;
+        border-radius: 16px;
+        border: 2px solid #bae6fd;
+        padding: 12px;
+        min-height: 260px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      .preview-frame img,
+      .preview-frame video {
+        width: 100%;
+        border-radius: 12px;
+        display: none;
+      }
+      .placeholder {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
       }
       pre {
         margin: 0;
@@ -109,105 +265,99 @@ _UI_HTML = """<!doctype html>
         white-space: pre-wrap;
         word-break: break-word;
       }
-      .controls {
-        display: grid;
-        gap: 12px;
-      }
-      .controls input[type="file"] {
-        width: 100%;
-        padding: 8px;
-        border-radius: 10px;
-        border: 1px dashed rgba(148, 163, 184, 0.4);
-        background: rgba(15, 23, 42, 0.6);
-        color: var(--text);
-      }
-      button {
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        color: #0f172a;
-        font-weight: 600;
-        border: none;
-        border-radius: 10px;
-        padding: 10px 14px;
-        cursor: pointer;
-      }
-      button.secondary {
-        background: transparent;
-        color: var(--text);
-        border: 1px solid rgba(148, 163, 184, 0.4);
-      }
-      .row {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .status-pill {
-        padding: 6px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        background: rgba(148, 163, 184, 0.1);
-        border: 1px solid rgba(148, 163, 184, 0.2);
-      }
-      .status-pill.ok { border-color: rgba(34, 211, 238, 0.6); color: var(--accent); }
-      .status-pill.warn { border-color: rgba(249, 115, 22, 0.6); color: var(--danger); }
-      video, canvas {
-        width: 100%;
-        border-radius: 12px;
-        background: #0b1220;
-      }
       footer {
-        padding: 0 32px 32px;
+        padding: 0 32px 28px;
         color: var(--muted);
         font-size: 12px;
+      }
+      @media (max-width: 980px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+        .detect-grid {
+          grid-template-columns: 1fr;
+        }
+        .header-meta {
+          justify-items: start;
+        }
       }
     </style>
   </head>
   <body>
     <header>
       <div>
-        <h1>ScaleUP Local Console</h1>
-        <span id="version">loading version...</span>
+        <div class="eyebrow">ScaleUP Local UI</div>
+        <h1>Fruits & Vegetables Detector</h1>
+        <p>Use this console to validate recognition, mapping, and camera input on Ubuntu.</p>
       </div>
-      <span class="badge">Local API</span>
+      <div class="header-meta">
+        <span class="pill" id="version">loading version...</span>
+        <span class="pill accent" id="model-status">model: loading...</span>
+      </div>
     </header>
     <main>
-      <section class="card">
-        <h2>Health</h2>
-        <div class="row" id="health-badges"></div>
+      <section class="panel">
+        <div class="panel-header">
+          <h2>System Status</h2>
+          <button id="refreshButton" class="ghost">Refresh Status</button>
+        </div>
+        <div class="pills" id="health-badges"></div>
         <div class="meta" id="health-meta"></div>
-      </section>
-      <section class="card">
-        <h2>Ingestion</h2>
-        <pre id="ingestion"></pre>
-      </section>
-      <section class="card">
-        <h2>Last Decision</h2>
-        <pre id="decision"></pre>
-      </section>
-      <section class="card">
-        <h2>Output + Safety</h2>
-        <pre id="system"></pre>
-      </section>
-      <section class="card">
-        <h2>Quick Test (Image or Video)</h2>
-        <div class="controls">
-          <input id="fileInput" type="file" accept="image/*,video/*" />
-          <div class="row">
-            <button id="runButton">Run Test</button>
-            <button id="refreshButton" class="secondary">Refresh Status</button>
+        <div class="status-grid">
+          <div class="status-card">
+            <h3>Ingestion</h3>
+            <pre id="ingestion"></pre>
           </div>
-          <pre id="predict"></pre>
+          <div class="status-card">
+            <h3>Last Decision</h3>
+            <pre id="decision"></pre>
+          </div>
+          <div class="status-card">
+            <h3>Output + Safety</h3>
+            <pre id="system"></pre>
+          </div>
         </div>
       </section>
-      <section class="card">
-        <h2>Camera Snapshot</h2>
-        <div class="controls">
-          <video id="camera" autoplay playsinline></video>
-          <canvas id="canvas" style="display:none;"></canvas>
-          <div class="row">
-            <button id="cameraStart">Start Camera</button>
-            <button id="cameraCapture" class="secondary">Capture + Test</button>
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Detection Console</h2>
+          <div class="pills">
+            <span class="pill accent">Local API</span>
+            <span class="pill" id="health-state">ready=...</span>
           </div>
-          <pre id="cameraResult"></pre>
+        </div>
+        <div class="detect-grid">
+          <div class="controls">
+            <label class="file-drop">
+              <input id="fileInput" type="file" accept="image/*,video/*" />
+              <span>Choose Image or Video</span>
+              <small id="previewLabel">No file selected</small>
+            </label>
+            <div class="button-row">
+              <button id="loadButton" class="ghost">Load Model / Refresh</button>
+              <button id="runButton">Classify File</button>
+              <button id="cameraStart" class="ghost">Start Camera</button>
+              <button id="cameraCapture" class="ghost">Capture + Classify</button>
+            </div>
+            <div>
+              <h3>File Result</h3>
+              <pre id="predict"></pre>
+            </div>
+            <div>
+              <h3>Camera Result</h3>
+              <pre id="cameraResult"></pre>
+            </div>
+          </div>
+          <div>
+            <div class="preview-frame">
+              <div id="previewPlaceholder" class="placeholder">Select a file or start the camera.</div>
+              <img id="previewImage" alt="preview" />
+              <video id="previewVideo" controls></video>
+              <video id="camera" autoplay playsinline></video>
+              <canvas id="canvas" style="display:none;"></canvas>
+            </div>
+            <div class="meta">The preview area follows the load, choose, and classify flow for validation.</div>
+          </div>
         </div>
       </section>
     </main>
@@ -215,6 +365,33 @@ _UI_HTML = """<!doctype html>
     <script>
       const el = (id) => document.getElementById(id);
       const pretty = (obj) => JSON.stringify(obj, null, 2);
+      let previewUrl = null;
+      let stream = null;
+
+      function showPreview(mode) {
+        el("previewPlaceholder").style.display = mode === "empty" ? "block" : "none";
+        el("previewImage").style.display = mode === "image" ? "block" : "none";
+        el("previewVideo").style.display = mode === "video" ? "block" : "none";
+        el("camera").style.display = mode === "camera" ? "block" : "none";
+      }
+
+      function resetPreview() {
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+          previewUrl = null;
+        }
+        el("previewImage").src = "";
+        el("previewVideo").src = "";
+        showPreview("empty");
+      }
+
+      function stopCamera() {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          stream = null;
+        }
+        el("camera").srcObject = null;
+      }
 
       async function fetchJson(path) {
         const res = await fetch(path);
@@ -229,10 +406,13 @@ _UI_HTML = """<!doctype html>
           const decision = await fetchJson("/last-decision");
           const system = await fetchJson("/ui/status");
           el("version").textContent = `version ${health.version} (${health.build_id})`;
+          el("model-status").textContent = `model: ${system.inference_backend || "unknown"}`;
           const badges = [];
-          badges.push(`<span class="status-pill ${health.degraded ? "warn" : "ok"}">ready=${health.ready}</span>`);
-          badges.push(`<span class="status-pill ${health.degraded ? "warn" : "ok"}">degraded=${health.degraded}</span>`);
+          const pillClass = health.degraded ? "warn" : "ok";
+          badges.push(`<span class="pill ${pillClass}">ready=${health.ready}</span>`);
+          badges.push(`<span class="pill ${pillClass}">degraded=${health.degraded}</span>`);
           el("health-badges").innerHTML = badges.join("");
+          el("health-state").textContent = `ready=${health.ready}`;
           el("health-meta").textContent = health.reasons && health.reasons.length ? health.reasons.join(", ") : "healthy";
           el("ingestion").textContent = pretty(ingestion);
           el("decision").textContent = pretty(decision);
@@ -254,6 +434,33 @@ _UI_HTML = """<!doctype html>
         }
       }
 
+      el("fileInput").addEventListener("change", () => {
+        const file = el("fileInput").files[0];
+        el("predict").textContent = "";
+        stopCamera();
+        if (!file) {
+          el("previewLabel").textContent = "No file selected";
+          resetPreview();
+          return;
+        }
+        el("previewLabel").textContent = file.name;
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+        }
+        previewUrl = URL.createObjectURL(file);
+        if (file.type.startsWith("image/")) {
+          el("previewImage").src = previewUrl;
+          showPreview("image");
+        } else if (file.type.startsWith("video/")) {
+          el("previewVideo").src = previewUrl;
+          showPreview("video");
+          el("previewVideo").play().catch(() => {});
+        } else {
+          el("previewLabel").textContent = "Unsupported file type";
+          resetPreview();
+        }
+      });
+
       el("runButton").addEventListener("click", () => {
         const file = el("fileInput").files[0];
         if (!file) {
@@ -264,12 +471,13 @@ _UI_HTML = """<!doctype html>
       });
 
       el("refreshButton").addEventListener("click", refreshStatus);
+      el("loadButton").addEventListener("click", refreshStatus);
 
-      let stream = null;
       el("cameraStart").addEventListener("click", async () => {
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
           el("camera").srcObject = stream;
+          showPreview("camera");
         } catch (err) {
           el("cameraResult").textContent = `camera error: ${err}`;
         }
@@ -296,6 +504,7 @@ _UI_HTML = """<!doctype html>
         }, "image/jpeg", 0.9);
       });
 
+      resetPreview();
       refreshStatus();
       setInterval(refreshStatus, 4000);
     </script>
