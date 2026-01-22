@@ -7,6 +7,7 @@ import sys
 
 from scale_vision.config.loader import ConfigLoader
 from scale_vision.versioning import app_version, base_version
+from scale_vision.desktop_app import launch_app
 from scale_vision.main import run
 
 
@@ -55,6 +56,8 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("run")
     sub.add_parser("install-check")
+    ui_parser = sub.add_parser("ui")
+    ui_parser.add_argument("--url", default="", help="Override UI URL (default from config)")
 
     args = parser.parse_args()
     if args.version:
@@ -67,6 +70,9 @@ def main() -> None:
         return
     if args.command == "install-check":
         sys.exit(install_check(args.config))
+    if args.command == "ui":
+        url = args.url or None
+        sys.exit(launch_app(args.config, url))
 
 
 if __name__ == "__main__":

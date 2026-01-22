@@ -41,6 +41,12 @@ exec /opt/scale-vision/venv/bin/scale-vision "$@"
 SH
 chmod +x /usr/local/bin/scale-vision
 
+cat <<'SH' > /usr/local/bin/scaleup-ui
+#!/bin/sh
+exec /opt/scale-vision/venv/bin/scale-vision --config /etc/scale-vision/config.json ui "$@"
+SH
+chmod +x /usr/local/bin/scaleup-ui
+
 if [ ! -f "$CONFIG_DIR/config.json" ]; then
   python3 - <<PY
 import json
@@ -53,6 +59,15 @@ Path("$CONFIG_DIR").mkdir(parents=True, exist_ok=True)
 with open("$CONFIG_DIR/config.json", "w", encoding="utf-8") as handle:
     json.dump(data, handle, indent=2)
 PY
+fi
+chown scalevision:scalevision "$CONFIG_DIR/config.json" || true
+chmod 664 "$CONFIG_DIR/config.json" || true
+
+if [ -d /etc/sudoers.d ]; then
+  cat <<'SUDO' > /etc/sudoers.d/scale-vision
+scalevision ALL=NOPASSWD: /bin/systemctl restart scale-vision.service
+SUDO
+  chmod 440 /etc/sudoers.d/scale-vision
 fi
 
 if [ -f "$ROOT_DIR/systemd/scale-vision.service" ]; then
@@ -89,4 +104,13 @@ fi
 systemctl daemon-reload
 systemctl enable --now scale-vision.service || true
 
-echo "Install complete. Open http://127.0.0.1:8080/ for UI."
+python3 - <<PY
+import json
+try:
+    with open("$CONFIG_DIR/config.json", "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    port = data.get("http", {}).get("port", 8080)
+except Exception:
+    port = 8080
+print(f"Install complete. Open http://127.0.0.1:{port}/ or launch ScaleUP from Apps.")
+PY

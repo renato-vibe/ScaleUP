@@ -2,8 +2,16 @@
   "mode": "test",
   "ingestion": {
     "source": "file",
-    "normalize": {"width": 640, "height": 640, "fps": 10},
-    "buffer": {"max_ms": 800, "drop_policy": "drop_oldest", "max_frames": 30},
+    "normalize": {
+      "width": 640,
+      "height": 640,
+      "fps": 10
+    },
+    "buffer": {
+      "max_ms": 800,
+      "drop_policy": "drop_oldest",
+      "max_frames": 30
+    },
     "file": {
       "path": "/var/lib/scale-vision/samples/sample.ppm",
       "replay_mode": "realtime",
@@ -14,8 +22,8 @@
     }
   },
   "inference": {
-    "backend": "onnx",
-    "model_path": "/var/lib/scale-vision/models/model_kavan_patel.onnx",
+    "backend": "kavan_patel_tf",
+    "model_path": "/var/lib/scale-vision/models/external/kavan_patel/checkpoints/yolov4-416",
     "top_k": 5,
     "device": "cpu",
     "external": {
@@ -24,8 +32,13 @@
       "repo_url": "https://github.com/Kavan-Patel/Fruits-And-Vegetable-Detection-for-POS-with-Deep-Learning",
       "checkout": "main",
       "install_dir": "/var/lib/scale-vision/models/external/kavan_patel",
-      "export": {"enabled": true, "output_onnx_path": "/var/lib/scale-vision/models/model_kavan_patel.onnx", "input_size": 640}
-    }
+      "export": {
+        "enabled": true,
+        "output_onnx_path": "/var/lib/scale-vision/models/model_kavan_patel.onnx",
+        "input_size": 640
+      }
+    },
+    "labels_path": "/var/lib/scale-vision/models/external/kavan_patel/data/classes/custom.names"
   },
   "decision": {
     "window_ms": 800,
@@ -36,13 +49,33 @@
     "scene_change_threshold": 0.4,
     "block_on_ingestion_degraded": true
   },
-  "mapping": {"default_action": "block", "classes": {}},
+  "mapping": {
+    "default_action": "block",
+    "classes": {}
+  },
   "output": {
     "backend": "test",
     "suffix": "\n",
-    "serial": {"device": "/dev/ttyUSB0", "baudrate": 9600, "parity": "none", "stopbits": 1, "terminator": "\r\n", "reconnect_ms": 1000}
+    "serial": {
+      "device": "/dev/ttyUSB0",
+      "baudrate": 9600,
+      "parity": "none",
+      "stopbits": 1,
+      "terminator": "\r\n",
+      "reconnect_ms": 1000
+    }
   },
-  "safety": {"kill_switch_file": "/etc/scale-vision/disable_output"},
-  "http": {"enabled": true, "bind": "127.0.0.1", "port": 8080},
-  "logging": {"level": "INFO", "log_dir": "/var/log/scale-vision", "json_log_file": "events.jsonl"}
+  "safety": {
+    "kill_switch_file": "/etc/scale-vision/disable_output"
+  },
+  "http": {
+    "enabled": true,
+    "bind": "127.0.0.1",
+    "port": 8080
+  },
+  "logging": {
+    "level": "INFO",
+    "log_dir": "/var/log/scale-vision",
+    "json_log_file": "events.jsonl"
+  }
 }

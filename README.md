@@ -32,6 +32,7 @@ Version marker:
 
 Local UI (visual test console):
 - Open `http://127.0.0.1:8080/` to upload images/videos or capture a camera snapshot.
+- Desktop window (no browser): `scale-vision ui` (requires `pip install 'scale-vision[desktop]'`).
 
 ## Camera mode (no emission, output=test)
 ```sh
@@ -54,6 +55,18 @@ sudo bash scripts/export_external_to_onnx.sh
 scale-vision run --config samples/sample_config_external_model.json
 ```
 If export fails, see `docs/model_integration_kavan_patel.txt` for TODOs.
+If your ONNX model outputs class indices, set `inference.labels_path` to map indexes -> class names.
+
+## Alternative model: Henning Heyen Fruits & Vegetables (YOLOv8)
+Repo + weights: https://github.com/henningheyen/Fruits-And-Vegetables-Detection-Dataset
+
+Setup:
+```sh
+sudo bash scripts/fetch_external_model_henningheyen.sh
+sudo /opt/scale-vision/venv/bin/pip install 'scale-vision[yolo]'
+sudo bash scripts/fetch_henningheyen_weights.sh
+scale-vision run --config samples/sample_config_henningheyen.json
+```
 
 ## systemd
 ```sh

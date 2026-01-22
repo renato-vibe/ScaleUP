@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=ScaleUP
-Comment=ScaleUP local status
-Exec=xdg-open http://127.0.0.1:8080/
+Comment=ScaleUP local app
+Exec=/usr/local/bin/scaleup-ui
 Icon=scaleup
 Type=Application
 Terminal=false

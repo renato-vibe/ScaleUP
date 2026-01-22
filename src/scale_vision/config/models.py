@@ -71,6 +71,7 @@ class ExternalModelConfig(BaseModel):
 class InferenceConfig(BaseModel):
     backend: str = "stub"
     model_path: str = "/var/lib/scale-vision/models/model.onnx"
+    labels_path: Optional[str] = None
     top_k: int = 5
     device: str = "cpu"
     fallback_to_stub: bool = True

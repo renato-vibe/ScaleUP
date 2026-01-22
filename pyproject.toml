@@ -31,6 +31,15 @@ dev = [
   "pytest>=7.4.0",
   "ruff>=0.4.0",
 ]
+desktop = [
+  "pywebview>=4.4.1",
+]
+external = [
+  "tensorflow-cpu>=2.13.0",
+]
+yolo = [
+  "ultralytics>=8.2.0",
+]
 
 [project.scripts]
 scale-vision = "scale_vision.cli:main"

@@ -17,6 +17,7 @@ class RuntimeState:
     last_decision: Optional[DecisionEvent] = None
     ingestion_status: Dict[str, Any] = field(default_factory=dict)
     config: Optional[AppConfig] = None
+    config_path: Optional[str] = None
     inference: Optional[Any] = None
     mapper: Optional[Any] = None
     inference_lock: threading.Lock = field(default_factory=threading.Lock)

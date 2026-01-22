@@ -14,6 +14,8 @@ from scale_vision.decision.quality import quality_gate
 from scale_vision.decision.state_machine import DecisionEngine
 from scale_vision.inference.base import InferenceLoadError, InferenceRuntimeError
 from scale_vision.inference.onnx_backend import OnnxInferenceBackend
+from scale_vision.inference.kavan_patel_tf_backend import KavanPatelTFBackend
+from scale_vision.inference.ultralytics_backend import UltralyticsBackend
 from scale_vision.inference.stub_backend import StubInferenceBackend
 from scale_vision.ingestion.base import IngestionRunner
 from scale_vision.ingestion.buffer import FrameBuffer
@@ -51,11 +53,25 @@ def _build_ingestion(config: AppConfig):
 
 
 def _build_inference(config: AppConfig):
+    if config.inference.backend == "kavan_patel_tf":
+        return KavanPatelTFBackend(
+            model_dir=config.inference.model_path,
+            labels_path=config.inference.labels_path,
+            top_k=config.inference.top_k,
+            repo_dir=config.inference.external.install_dir,
+        )
+    if config.inference.backend == "ultralytics":
+        return UltralyticsBackend(
+            model_path=config.inference.model_path,
+            top_k=config.inference.top_k,
+            device=config.inference.device,
+        )
     if config.inference.backend == "onnx":
         return OnnxInferenceBackend(
             model_path=config.inference.model_path,
             top_k=config.inference.top_k,
             device=config.inference.device,
+            labels_path=config.inference.labels_path,
         )
     return StubInferenceBackend(config.inference.stub_classes, config.inference.top_k)
 
@@ -97,6 +113,7 @@ def run(config_path: str) -> None:
     metrics = Metrics()
     state = RuntimeState(health=health, metrics=metrics)
     state.config = config
+    state.config_path = config_path
 
     backend, buffer, freeze_cfg = _build_ingestion(config)
     ingestion_runner = IngestionRunner(

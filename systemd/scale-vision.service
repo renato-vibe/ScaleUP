@@ -6,7 +6,7 @@ StartLimitBurst=5
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/scale-vision run --config /etc/scale-vision/config.json
+ExecStart=/usr/local/bin/scale-vision --config /etc/scale-vision/config.json run
 Restart=always
 RestartSec=2
 User=scalevision
